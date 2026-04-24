@@ -78,9 +78,23 @@ class AnimatedMinimalistTimer:
         self.create_round_button("📂 IMAGES", self.load_folder)
         self.create_round_button("📄 PDF FILE", self.load_pdf)
 
+        # --- Navigation Buttons ---
+        nav_frame = tk.Frame(self.sidebar, bg=self.color_sidebar)
+        nav_frame.pack(pady=10)
+        
+        self.btn_prev = tk.Button(nav_frame, text="<", command=self.prev_slide, 
+                                 bg="#333333", fg="white", font=(font_main, 12), 
+                                 relief="flat", width=4, cursor="hand2")
+        self.btn_prev.pack(side=tk.LEFT, padx=5)
+        
+        self.btn_next = tk.Button(nav_frame, text=">", command=self.next_slide, 
+                                 bg="#333333", fg="white", font=(font_main, 12), 
+                                 relief="flat", width=4, cursor="hand2")
+        self.btn_next.pack(side=tk.LEFT, padx=5)
+
         # Timer Big Display
         self.lbl_display = tk.Label(self.sidebar, text="00:00", font=(font_main, 36), fg=self.color_accent, bg=self.color_sidebar)
-        self.lbl_display.pack(pady=40)
+        self.lbl_display.pack(pady=20)
         
         self.lbl_status = tk.Label(self.sidebar, text="READY", fg="#555555", bg=self.color_sidebar, font=("Arial Bold", 9))
         self.lbl_status.pack()
@@ -101,6 +115,18 @@ class AnimatedMinimalistTimer:
         r = c.create_rectangle(5, 5, 145, 40, fill="white", outline="")
         t = c.create_text(75, 22, text=text, fill="black", font=("Arial Bold", 10))
         c.bind("<Button-1>", lambda e: command())
+
+    def prev_slide(self):
+        if self.slides:
+            self.current_idx = (self.current_idx - 1) % len(self.slides)
+            self.show_slide(self.current_idx, animate=False)
+            self.lbl_status.config(text=f"PAGE {self.current_idx+1} / {len(self.slides)}")
+
+    def next_slide(self):
+        if self.slides:
+            self.current_idx = (self.current_idx + 1) % len(self.slides)
+            self.show_slide(self.current_idx, animate=False)
+            self.lbl_status.config(text=f"PAGE {self.current_idx+1} / {len(self.slides)}")
 
     def play_custom_sound(self):
         def sound():
@@ -152,6 +178,7 @@ class AnimatedMinimalistTimer:
                     self.slides.append(img)
                 doc.close()
                 self.show_slide(0)
+                self.lbl_status.config(text=f"PAGE 1 / {len(self.slides)}")
             except Exception as e: messagebox.showerror("Error", str(e))
 
     def load_folder(self):
@@ -163,7 +190,9 @@ class AnimatedMinimalistTimer:
                 files = [os.path.join(path, f) for f in os.listdir(path) if f.lower().endswith(valid)]
                 files.sort()
                 for f in files: self.slides.append(Image.open(f))
-                if self.slides: self.show_slide(0)
+                if self.slides: 
+                    self.show_slide(0)
+                    self.lbl_status.config(text=f"PAGE 1 / {len(self.slides)}")
             except Exception as e: messagebox.showerror("Error", str(e))
 
     def start_timer_thread(self):
