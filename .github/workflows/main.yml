@@ -13,8 +13,9 @@ jobs:
           pip install Pillow PyMuPDF pyinstaller
       - name: Build App
         run: |
-          # สั่งให้หยิบไฟล์เสียงชื่อ mp3 ใส่เข้าไปในแอปด้วย
-          pyinstaller --noconsole --onefile --windowed --add-data "mp3:." timeV8.py
+          # เพิ่ม --icon icon.icns เพื่อใส่รูปหน้าแอป
+          # เพิ่ม --add-data "mp3:." เพื่อเอาไฟล์เสียงเข้าไปในแอป
+          pyinstaller --noconsole --onefile --windowed --add-data "mp3:." --icon icon.icns timeV8.py
       - name: Zip and Upload
         run: |
           cd dist
