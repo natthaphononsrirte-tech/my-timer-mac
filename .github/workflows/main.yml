@@ -5,25 +5,20 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install Libs
         run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
-
+          pip install Pillow PyMuPDF pyinstaller
       - name: Build App
         run: |
-          pyinstaller --noconsole --onefile --windowed timeV8.py
-
+          # สั่งให้หยิบไฟล์เสียงชื่อ mp3 ใส่เข้าไปในแอปด้วย
+          pyinstaller --noconsole --onefile --windowed --add-data "mp3:." timeV8.py
       - name: Zip and Upload
         run: |
           cd dist
           zip -r TimerApp.zip *.app
-
       - uses: actions/upload-artifact@v4
         with:
           name: Timer-Mac-Version
