@@ -119,7 +119,8 @@ class AnimatedMinimalistTimer:
                     for _ in range(5): winsound.Beep(1000, 200)
             else:
                 if os.path.exists(self.audio_file):
-                    os.system(f'afplay "{self.audio_file}" &')
+                    # -t 2 คือเล่นแค่ 2 วินาทีบน Mac
+                    os.system(f'afplay -t 2 "{self.audio_file}" &')
                 else:
                     os.system('afplay /System/Library/Sounds/Glass.aiff &')
         threading.Thread(target=sound, daemon=True).start()
