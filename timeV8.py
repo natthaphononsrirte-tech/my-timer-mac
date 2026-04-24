@@ -3,17 +3,24 @@ from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk, ImageEnhance
 import os
 import time
-import winsound
 import threading
 import fitz  # PyMuPDF
 import sys
-import ctypes
+import platform
 
-# สำหรับเรียกใช้ mciSendString ใน Windows เพื่อเล่นไฟล์ MP3
-mci = ctypes.windll.winmm
+# ตรวจสอบระบบปฏิบัติการ
+IS_WINDOWS = platform.system() == "Windows"
+
+if IS_WINDOWS:
+    import winsound
+    import ctypes
+    # สำหรับเรียกใช้ mciSendString ใน Windows เพื่อเล่นไฟล์ MP3
+    mci = ctypes.windll.winmm
+else:
+    mci = None
 
 def resource_path(relative_path):
-    """ ค้นหาไฟล์สำรองเมื่อรันเป็น .exe """
+    """ ค้นหาไฟล์สำรองเมื่อรันเป็น .exe หรือ .app """
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -23,7 +30,7 @@ def resource_path(relative_path):
 class AnimatedMinimalistTimer:
     def __init__(self, root):
         self.root = root
-        self.root.title("Minimalist Ultra V8")
+        self.root.title("Minimalist Ultra V8 (Cross-Platform)")
         self.root.geometry("1200x850")
         self.root.configure(bg="#000000")
 
@@ -42,7 +49,6 @@ class AnimatedMinimalistTimer:
         self.slides = []
         self.current_idx = 0
         self.remaining_seconds = 0
-        self.total_seconds = 0
 
         # --- Layout ---
         self.sidebar = tk.Frame(root, width=180, bg=self.color_sidebar, padx=15, pady=40)
@@ -53,10 +59,11 @@ class AnimatedMinimalistTimer:
         self.main_view.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
         # --- Sidebar Widgets ---
-        tk.Label(self.sidebar, text="TIMER", fg=self.color_accent, bg=self.color_sidebar, font=("Segoe UI Black", 18)).pack(pady=(0,20))
+        font_main = "Arial Black" if not IS_WINDOWS else "Segoe UI Black"
+        tk.Label(self.sidebar, text="TIMER", fg=self.color_accent, bg=self.color_sidebar, font=(font_main, 18)).pack(pady=(0,20))
 
         # Time Entry Area
-        e_cfg = {"bg": "#222222", "fg": "white", "relief": "flat", "font": ("Segoe UI Black", 20), "justify": "center", "insertbackground": "white"}
+        e_cfg = {"bg": "#222222", "fg": "white", "relief": "flat", "font": (font_main, 20), "justify": "center", "insertbackground": "white"}
         t_frame = tk.Frame(self.sidebar, bg=self.color_sidebar)
         t_frame.pack()
         self.entry_min = tk.Entry(t_frame, width=2, **e_cfg)
@@ -72,16 +79,16 @@ class AnimatedMinimalistTimer:
         self.create_round_button("📄 PDF FILE", self.load_pdf)
 
         # Timer Big Display
-        self.lbl_display = tk.Label(self.sidebar, text="00:00", font=("Segoe UI Black", 36), fg=self.color_accent, bg=self.color_sidebar)
+        self.lbl_display = tk.Label(self.sidebar, text="00:00", font=(font_main, 36), fg=self.color_accent, bg=self.color_sidebar)
         self.lbl_display.pack(pady=40)
         
-        self.lbl_status = tk.Label(self.sidebar, text="READY", fg="#555555", bg=self.color_sidebar, font=("Segoe UI Bold", 9))
+        self.lbl_status = tk.Label(self.sidebar, text="READY", fg="#555555", bg=self.color_sidebar, font=("Arial Bold", 9))
         self.lbl_status.pack()
 
         # Start Button
         self.btn_start = tk.Button(self.sidebar, text="START", command=self.start_timer_thread, 
-                                  bg=self.color_accent, fg="black", font=("Segoe UI Black", 14), 
-                                  relief="flat", width=12, height=2, cursor="hand2", activebackground="#d4ac0d")
+                                  bg=self.color_accent, fg="black", font=(font_main, 14), 
+                                  relief="flat", width=12, height=2, cursor="hand2")
         self.btn_start.pack(side=tk.BOTTOM, pady=20)
 
         # Slide Image reference
@@ -91,37 +98,28 @@ class AnimatedMinimalistTimer:
     def create_round_button(self, text, command):
         c = tk.Canvas(self.sidebar, width=150, height=45, bg=self.color_sidebar, highlightthickness=0, cursor="hand2")
         c.pack(pady=10)
-        r = self.draw_rounded_rect(c, 5, 5, 145, 40, 18, fill="white")
-        t = c.create_text(75, 22, text=text, fill="black", font=("Segoe UI Bold", 10))
-        
-        def on_release(e):
-            c.move(r, 2, 2); c.move(t, 2, 2)
-            self.root.after(100, lambda: (c.move(r, -2, -2), c.move(t, -2, -2), command()))
-            
-        c.bind("<Button-1>", on_release)
-        c.bind("<Enter>", lambda e: c.itemconfig(r, fill="#dddddd"))
-        c.bind("<Leave>", lambda e: c.itemconfig(r, fill="white"))
-
-    def draw_rounded_rect(self, canvas, x1, y1, x2, y2, r, **kwargs):
-        pts = [x1+r, y1, x1+r, y1, x2-r, y1, x2-r, y1, x2, y1, x2, y1+r, x2, y1+r, x2, y2-r, x2, y2-r, x2, y2, x2-r, y2, x2-r, y2, x1+r, y2, x1+r, y2, x1, y2, x1, y2-r, x1, y2-r, x1, y1+r, x1, y1+r, x1, y1]
-        return canvas.create_polygon(pts, **kwargs, smooth=True)
+        r = c.create_rectangle(5, 5, 145, 40, fill="white", outline="")
+        t = c.create_text(75, 22, text=text, fill="black", font=("Arial Bold", 10))
+        c.bind("<Button-1>", lambda e: command())
 
     def play_custom_sound(self):
-        # เล่นไฟล์เสียงที่ผู้ใช้เลือก ยาว 2 วินาที
         def sound():
-            if os.path.exists(self.audio_file):
-                path = self.audio_file
-                # ใช้ MCI เพื่อเล่นไฟล์ (รองรับ MP3)
-                mci.mciSendStringW(f'open "{path}" type mpegvideo alias timer_sound', None, 0, 0)
-                mci.mciSendStringW('play timer_sound', None, 0, 0)
-                time.sleep(2) # เล่น 2 วินาที
-                mci.mciSendStringW('stop timer_sound', None, 0, 0)
-                mci.mciSendStringW('close timer_sound', None, 0, 0)
+            if IS_WINDOWS:
+                if os.path.exists(self.audio_file):
+                    path = self.audio_file
+                    mci.mciSendStringW(f'open "{path}" type mpegvideo alias timer_sound', None, 0, 0)
+                    mci.mciSendStringW('play timer_sound', None, 0, 0)
+                    time.sleep(2)
+                    mci.mciSendStringW('stop timer_sound', None, 0, 0)
+                    mci.mciSendStringW('close timer_sound', None, 0, 0)
+                else:
+                    for _ in range(5):
+                        winsound.Beep(1000, 200)
             else:
-                # ถ้าไม่พบไฟล์เสียง ให้กริ๊งสำรอง
-                for _ in range(40):
-                    winsound.Beep(1500, 40)
-                    time.sleep(0.01)
+                # สำหรับ macOS
+                os.system('printf "\a"') # เสียงติ๊งพื้นฐาน
+                if os.path.exists(self.audio_file):
+                    os.system(f'afplay "{self.audio_file}" &')
 
         threading.Thread(target=sound, daemon=True).start()
 
@@ -132,29 +130,15 @@ class AnimatedMinimalistTimer:
     def show_slide(self, index, animate=True):
         if 0 <= index < len(self.slides):
             self.current_idx = index
-            cw = self.main_view.winfo_width()
-            ch = self.main_view.winfo_height()
+            cw, ch = self.main_view.winfo_width(), self.main_view.winfo_height()
             if cw < 100: cw, ch = 1000, 800
 
             base_img = self.slides[index].copy()
             base_img.thumbnail((cw-60, ch-60), Image.Resampling.LANCZOS)
             
-            if animate:
-                threading.Thread(target=self.subtle_fade, args=(base_img, cw, ch), daemon=True).start()
-            else:
-                self.render_image(base_img, cw, ch)
-
-    def subtle_fade(self, target_img, cw, ch):
-        for alpha in [0.75, 0.85, 0.95, 1.0]:
-            enhancer = ImageEnhance.Brightness(target_img)
-            temp = enhancer.enhance(alpha)
-            self.root.after(0, self.render_image, temp, cw, ch)
-            time.sleep(0.04)
-
-    def render_image(self, img, cw, ch):
-        self.photo = ImageTk.PhotoImage(img)
-        self.main_view.itemconfig(self.image_on_canvas, image=self.photo)
-        self.main_view.coords(self.image_on_canvas, cw//2, ch//2)
+            self.photo = ImageTk.PhotoImage(base_img)
+            self.main_view.itemconfig(self.image_on_canvas, image=self.photo)
+            self.main_view.coords(self.image_on_canvas, cw//2, ch//2)
 
     def load_pdf(self):
         path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
@@ -174,7 +158,7 @@ class AnimatedMinimalistTimer:
         path = filedialog.askdirectory()
         if path:
             self.slides = []
-            valid = ('.png', '.jpg', '.jpeg', '.gif', '.bmp')
+            valid = ('.png', '.jpg', '.jpeg')
             try:
                 files = [os.path.join(path, f) for f in os.listdir(path) if f.lower().endswith(valid)]
                 files.sort()
@@ -186,33 +170,29 @@ class AnimatedMinimalistTimer:
         if not self.slides:
             messagebox.showinfo("INFO", "LOAD FILES FIRST")
             return
-        if not self.is_running:
-            self.is_running = True
+        self.is_running = not self.is_running
+        if self.is_running:
             threading.Thread(target=self.run_timer, daemon=True).start()
-        else:
-            self.is_running = False
 
     def run_timer(self):
         try:
             total_sec = int(self.entry_min.get()) * 60 + int(self.entry_sec.get())
         except: return
-        self.btn_start.config(text="STOP", bg="white")
+        self.btn_start.config(text="STOP")
         for i in range(len(self.slides)):
             if not self.is_running: break
             self.root.after(0, self.show_slide, i)
             self.remaining_seconds = total_sec
-            while self.remaining_seconds >= 0:
-                if not self.is_running: break
+            while self.remaining_seconds >= 0 and self.is_running:
                 m, s = divmod(self.remaining_seconds, 60)
                 self.lbl_display.config(text=f"{m:02d}:{s:02d}")
                 self.lbl_status.config(text=f"PAGE {i+1} / {len(self.slides)}")
                 self.root.update()
                 time.sleep(1)
                 self.remaining_seconds -= 1
-            if not self.is_running: break
-            self.play_custom_sound()
+            if self.is_running: self.play_custom_sound()
         self.is_running = False
-        self.btn_start.config(text="START", bg=self.color_accent)
+        self.btn_start.config(text="START")
         self.lbl_display.config(text="00:00")
 
 if __name__ == "__main__":
